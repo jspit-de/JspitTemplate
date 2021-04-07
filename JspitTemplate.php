@@ -1,10 +1,11 @@
 <?php
+//namespace Jspit;
 /**
 	JspitTemplate.php
 .---------------------------------------------------------------------------.
 |  Software: JspitTemplate - Simple PHP Template Class                      |
 |   Version: 1.2                                                            |
-|      Date: 2020-02-09                                                     |
+|      Date: 2020-04-07                                                     |
 |  PHPVersion >= 7.0                                                        |
 | ------------------------------------------------------------------------- |
 | Copyright © 2020 - 2021, Peter Junk (alias jspit). All Rights Reserved.   |
@@ -46,7 +47,7 @@ class JspitTemplate {
   /*
    * create a object JspitTemplate
    * @param $tplFileName Template-Filename
-   * @return object or false if error
+   * @return object or throw a exeption if error
    */
   public static function create(string $tplFileName) : self
   {
@@ -55,7 +56,6 @@ class JspitTemplate {
     }
     catch (Exception $e) {
       throw new InvalidArgumentException('Error read Templatefile "'.$tplFileName.'"');
-      $tpl = false;
     }
     return $tpl;
   }
@@ -70,6 +70,19 @@ class JspitTemplate {
   {
     return new self($string, true);
   }
+
+  /*
+   * renderFromString
+   * render a Template-String
+   * @param $string a Template
+   * @param array $keyValue 
+   * @return string HTML
+   */
+  public static function renderFromString(string $string = "",array $assign = []) : string
+  {
+    return (new self($string, true))->render($assign);
+  }
+
 
  /*
   * set default template path
@@ -86,9 +99,29 @@ class JspitTemplate {
     return $path;
   }
 
+/*
+ * render template and get html
+ * @param string filename (optional)
+ * @param array $keyValue 
+ * @return string HTML
+ * @throw Exception if arguments incorrect
+ */
+  public function render(...$par)
+  {
+    if(is_string($par[0])){
+      $this->loadFile(array_shift($par));
+    }
+    if(is_array($par[0])) {
+      return $this->getHTMl($par[0]);
+    }
+    else {
+      throw new InvalidArgumentException("Error Arguments render");
+    }  
+  }
 
  /*
   * render code and get HTML
+  * @param array $keyValue 
   * @return string HTML
   */ 
   public function getHTML(array $assign = []) : string
@@ -112,6 +145,7 @@ class JspitTemplate {
   * load Template
   * @param String $tplFileName : Filename 
   * @return $this
+  * @throw Exception if Template-FileName incorrect
   */
   public function loadFile(string $tplFileName) : self
   {
@@ -342,7 +376,7 @@ class JspitTemplate {
   */
   private function replaceDefaults()
   {
-    $regEx = '~\{\{[^?{}]+\?\?([\'"])(.+?)(\1)\}\}~u';
+    $regEx = '~\{\{[^?{}]+\?\?([\'"])(.*?)(\1)\}\}~u';
     $this->tpl = preg_replace_callback(
       $regEx,
       function(array $matches){
@@ -382,16 +416,25 @@ class JspitTemplate {
       }
       elseif($match[1] == 'date' AND $arg2 !== false){
         if(is_numeric($value)) { //timestamp
-          $tz = new DateTimeZone(date_default_timezone_get());
+          $tz = new \DateTimeZone(date_default_timezone_get());
           $value = date_create('@'.$value)->setTimeZone($tz);
         }
         elseif(is_string($value) AND ($dt = date_create($value)) !== false){
           $value = $dt;
         }
-        if($value instanceOf DateTime) $value = $value->format($arg2);
+        if($value instanceOf \DateTime) $value = $value->format($arg2);
       }
-      elseif($match[1] == 'selected' AND $arg2 !== false){
-        $value = $value === $arg2 ? 'selected' : '';
+      elseif(in_array($match[1],['selected','checked'])){
+        if( $arg2 !== false){
+          $value = $value === $arg2 ? $match[1] : '';
+        }
+        else {
+          $value = $match[1]; 
+        }
+      }
+      elseif($match[1] == 'blank') $value = '';
+      elseif($match[1] == 'set') {
+        $value = $value !== "" ? (string)$arg2 : "";
       }
       elseif(array_key_exists($match[1], $this->userFct)){
         $value = ($arg2 !== false AND $arg2 !== "") 
