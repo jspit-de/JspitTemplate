@@ -4,8 +4,8 @@
 	JspitTemplate.php
 .---------------------------------------------------------------------------.
 |  Software: JspitTemplate - Simple PHP Template Class                      |
-|   Version: 1.2                                                            |
-|      Date: 2020-04-07                                                     |
+|   Version: 1.3                                                            |
+|      Date: 2021-08-05                                                     |
 |  PHPVersion >= 7.0                                                        |
 | ------------------------------------------------------------------------- |
 | Copyright © 2020 - 2021, Peter Junk (alias jspit). All Rights Reserved.   |
@@ -347,7 +347,7 @@ class JspitTemplate {
   * @param $placeholder string e.g.'{{foo.bar|format("%3d")|html??"default val"}}'
   * @return array('name' => .., 'filter' => .., 'default' => ..) or false if error
   */ 
-  public static function splitPlaceholder(string $placeholder) : array
+  public static function splitPlaceholder(string $placeholder) 
   {
     $regEx = '~^(?<name>[\w.]+)(?<filter>\|.+?)?(?<default>\?\?.+?)?$~';
     if(!preg_match($regEx, trim($placeholder,'{}'), $match)) return false;
@@ -358,7 +358,7 @@ class JspitTemplate {
         : [],
       'default' => isset($match[3]) 
         ? self::stripQuotes(substr($match[3],2)) 
-        : '' 
+        : null 
     ];
     return $fractions;
   }
@@ -412,7 +412,7 @@ class JspitTemplate {
         }
       }
       elseif($match[1] == 'format' AND $arg2 !== false){
-        $value = sprintf($arg2, $value);
+        $value = is_array($value) ? vsprintf($arg2, $value) : sprintf($arg2, $value);
       }
       elseif($match[1] == 'date' AND $arg2 !== false){
         if(is_numeric($value)) { //timestamp
@@ -422,7 +422,7 @@ class JspitTemplate {
         elseif(is_string($value) AND ($dt = date_create($value)) !== false){
           $value = $dt;
         }
-        if($value instanceOf \DateTime) $value = $value->format($arg2);
+        if($value instanceOf \DateTimeInterface) $value = $value->format($arg2);
       }
       elseif(in_array($match[1],['selected','checked'])){
         if( $arg2 !== false){
@@ -435,6 +435,15 @@ class JspitTemplate {
       elseif($match[1] == 'blank') $value = '';
       elseif($match[1] == 'set') {
         $value = $value !== "" ? (string)$arg2 : "";
+      }
+      elseif($match[1] == 'case' AND $arg2 !== false AND $arg2 != ""){
+        $delim = substr($arg2,0,1);
+        $cases = explode($delim, substr($arg2,1));
+        $value = intval($value);
+        $value = array_key_exists($value, $cases) 
+          ? $cases[$value]
+          : ""
+        ;
       }
       elseif(array_key_exists($match[1], $this->userFct)){
         $value = ($arg2 !== false AND $arg2 !== "") 
