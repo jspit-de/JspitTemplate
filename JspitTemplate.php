@@ -4,8 +4,8 @@
 	JspitTemplate.php
 .---------------------------------------------------------------------------.
 |  Software: JspitTemplate - Simple PHP Template Class                      |
-|   Version: 1.3                                                            |
-|      Date: 2021-08-05                                                     |
+|   Version: 1.4                                                            |
+|      Date: 2021-12-04                                                     |
 |  PHPVersion >= 7.0                                                        |
 | ------------------------------------------------------------------------- |
 | Copyright © 2020 - 2021, Peter Junk (alias jspit). All Rights Reserved.   |
@@ -401,9 +401,10 @@ class JspitTemplate {
       //split name as $match[1] + argument as $match[2]
       $r =preg_match('~^(\w+)(?:\((.*)\))?$~', $fkt, $match);
       if($r === 0) continue;
+      $filter = $match[1]; //filtername
       $arg2 = isset($match[2]) ? trim($match[2],'\'"') : false;
-      if($match[1] == 'html' OR $match[1] == 'raw') $esc = false;
-      elseif(substr($match[1],0,3) == 'url') {
+      if($filter == 'html' OR $filter == 'raw') $esc = false;
+      elseif(substr($filter,0,3) == 'url') {
         if(is_array($value)) {
           $value = http_build_query($value);
         }
@@ -411,10 +412,10 @@ class JspitTemplate {
           $value = rawurlencode($value);
         }
       }
-      elseif($match[1] == 'format' AND $arg2 !== false){
+      elseif($filter == 'format' AND $arg2 !== false){
         $value = is_array($value) ? vsprintf($arg2, $value) : sprintf($arg2, $value);
       }
-      elseif($match[1] == 'date' AND $arg2 !== false){
+      elseif($filter == 'date' AND $arg2 !== false){
         if(is_numeric($value)) { //timestamp
           $tz = new \DateTimeZone(date_default_timezone_get());
           $value = date_create('@'.$value)->setTimeZone($tz);
@@ -424,31 +425,37 @@ class JspitTemplate {
         }
         if($value instanceOf \DateTimeInterface) $value = $value->format($arg2);
       }
-      elseif(in_array($match[1],['selected','checked'])){
+      elseif(in_array($filter,['selected','checked'])){
         if( $arg2 !== false){
-          $value = $value === $arg2 ? $match[1] : '';
+          $value = $value === $arg2 ? $filter : '';
         }
         else {
-          $value = $match[1]; 
+          $value = $filter; 
         }
       }
-      elseif($match[1] == 'blank') $value = '';
-      elseif($match[1] == 'set') {
+      elseif($filter == 'blank') $value = '';
+      elseif($filter == 'set') {
         $value = $value !== "" ? (string)$arg2 : "";
       }
-      elseif($match[1] == 'case' AND $arg2 !== false AND $arg2 != ""){
+      elseif(($filter == 'case' OR $filter == 'sign') AND $arg2 !== false AND $arg2 != ""){
         $delim = substr($arg2,0,1);
         $cases = explode($delim, substr($arg2,1));
-        $value = intval($value);
+        $value = $filter == 'case' 
+          ? intval($value)
+          : ($value <=> 0) +1  
+        ;
         $value = array_key_exists($value, $cases) 
           ? $cases[$value]
           : ""
         ;
       }
-      elseif(array_key_exists($match[1], $this->userFct)){
+      elseif($filter == 'abs' AND is_numeric($value)) {
+        $value = abs($value);
+      }
+      elseif(array_key_exists($filter, $this->userFct)){
         $value = ($arg2 !== false AND $arg2 !== "") 
-          ? $this->userFct[$match[1]]($value,$arg2)
-          : $this->userFct[$match[1]]($value)
+          ? $this->userFct[$filter]($value,$arg2)
+          : $this->userFct[$filter]($value)
         ;
       }
     }   
