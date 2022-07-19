@@ -6,7 +6,7 @@ JspitTemplate is a small and fast template system for PHP.
 - pure HTML templates 
 - integrated escaping
 - Filters for formatting, escaping, user defined 
-- small, only one file with 14kByte
+- small, only one file with 15kByte
 - Independent (Linux,Window, PHP >= V7.0)
 
 ## How to use it
@@ -173,6 +173,35 @@ checked is a special filter for checkboxes in forms.
 The result is "checked" if the "chk" element is present in the post array. In all other cases the result is an empty string.
 
 Custom filters can be added using the addStaticUserFunction() and addUserFunction() methods. Filters that are not defined always return the unchanged value and do not cause any errors.
+
+### each
+
+Simple loops can be implemented with the filter 'each'.
+
+```html
+<ul>
+  {{htmlList|each("<li>#val#</li>")|raw}}
+</ul>
+```
+
+htmlList must be assigned an array. The placeholder #val# is replaced with the value and #key' with the key from the array.
+
+```php
+$html = JspitTemplate::createFromString($template)
+  ->render(['htmlList' => ['Coffee','Tea','Milk']])
+;
+```
+
+HTML:
+```html
+<ul>
+<li>Coffee</li>
+<li>Tea</li>
+<li>Milk</li>
+</ul>
+```
+
+
 
 ## Doc
 http://jspit.de/tools/classdoc.php?class=JspitTemplate 

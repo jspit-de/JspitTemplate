@@ -4,8 +4,8 @@
 	JspitTemplate.php
 .---------------------------------------------------------------------------.
 |  Software: JspitTemplate - Simple PHP Template Class                      |
-|   Version: 1.4                                                            |
-|      Date: 2021-12-04                                                     |
+|   Version: 1.5                                                            |
+|      Date: 2022-07-19                                                     |
 |  PHPVersion >= 7.0                                                        |
 | ------------------------------------------------------------------------- |
 | Copyright © 2020 - 2021, Peter Junk (alias jspit). All Rights Reserved.   |
@@ -54,8 +54,8 @@ class JspitTemplate {
     try{
       $tpl = new self($tplFileName);
     }
-    catch (Exception $e) {
-      throw new InvalidArgumentException('Error read Templatefile "'.$tplFileName.'"');
+    catch (\Exception $e) {
+      throw new \InvalidArgumentException('Error read Templatefile "'.$tplFileName.'"');
     }
     return $tpl;
   }
@@ -108,15 +108,20 @@ class JspitTemplate {
  */
   public function render(...$par)
   {
-    if(is_string($par[0])){
-      $this->loadFile(array_shift($par));
-    }
-    if(is_array($par[0])) {
-      return $this->getHTMl($par[0]);
+    if(isset($par[0])){
+      if(is_string($par[0])){
+        $this->loadFile(array_shift($par));
+      }
+      if(is_array($par[0])) {
+        return $this->getHTMl($par[0]);
+      }
+      else {
+        throw new \InvalidArgumentException("Error Arguments render");
+      } 
     }
     else {
-      throw new InvalidArgumentException("Error Arguments render");
-    }  
+      return $this->getHTMl();
+    } 
   }
 
  /*
@@ -154,7 +159,7 @@ class JspitTemplate {
       $tplFileName = self::$templatePath.$tplFileName;
     }
     if(!is_readable($tplFileName)) {
-      throw new Exception("Error: Template-File '".$tplFileName."' is not readable");
+      throw new \Exception("Error: Template-File '".$tplFileName."' is not readable");
     }
     $this->tpl = file_get_contents($tplFileName);
     $this->prepare();
@@ -318,7 +323,7 @@ class JspitTemplate {
  /*
   * check and prepare template
   */
-  private function prepare()
+  private function prepare() : void
   {
     $regEx = '/(?<!\\\\)([\'"])(?:(?!(?:\1|\\\\)).|\\\\.)*+\1(*SKIP)(*FAIL)|\h+/m'; 
     $regExCheck = '~^\{\{\w+(\.\w+)?(.+)?\}\}$~';
@@ -326,7 +331,7 @@ class JspitTemplate {
       $compress = preg_replace($regEx, '', $placeHolder);
       if(!preg_match($regExCheck, $compress)){
         //format error placeholder
-        throw new Exception("Format Error Template Placeholder '".$placeHolder."'");
+        throw new \Exception("Format Error Template Placeholder '".$placeHolder."'");
       }
       $this->tpl = str_replace($placeHolder, $compress,$this->tpl);
     }
@@ -452,6 +457,9 @@ class JspitTemplate {
       elseif($filter == 'abs' AND is_numeric($value)) {
         $value = abs($value);
       }
+      elseif($filter == 'each') {
+        $value = $this->filterEach($value,$arg2);
+      }
       elseif(array_key_exists($filter, $this->userFct)){
         $value = ($arg2 !== false AND $arg2 !== "") 
           ? $this->userFct[$filter]($value,$arg2)
@@ -463,6 +471,31 @@ class JspitTemplate {
       ? htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') 
       : (string)$value
     ;
+  }
+  
+ /*
+  * for each in $value 
+  * @param $value (array)
+  * @param string $arg  with placeholder for #key# and #val#
+  * @param bool $esc escape keys and values
+  * @return string new value
+  */
+  private function filterEach($value,$arg,$esc = true)
+  {
+    if(is_array($value)){
+      $newValue = "";
+      foreach($value as $key => $el){
+        if($esc){
+          $key = htmlspecialchars((string)$key, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+          $el = htmlspecialchars((string)$el, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); 
+          $newValue .= strtr($arg, ['#key#' => $key, '#val#' => $el])."\r\n"; 
+        }
+      }
+      return trim($newValue);
+    }
+    //error
+    $msg = "Filter each requires an array" ;
+    throw new \Exception($msg);
   }
 
 }

@@ -1,5 +1,8 @@
 # JspitTemplate
 
+## Version 1.5 (2022-07-19)
+* Added Filter 'each' for simple loops
+
 ## Version 1.4 (2021-12-04)
 * Added Filter sign and abs
 
